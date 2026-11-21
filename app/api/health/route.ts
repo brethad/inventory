@@ -3,6 +3,7 @@ import path from "node:path";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { isLocalNoAuthEnabled } from "@/lib/local-no-auth";
 import { getStorageProvider } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export async function GET() {
     return Response.json(
       {
         status: "ok",
+        localNoAuth: isLocalNoAuthEnabled(),
         checks: { database: "ok", migrations: "ok", storage: "ok" },
       },
       { headers: { "Cache-Control": "no-store" } },

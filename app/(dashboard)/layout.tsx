@@ -104,6 +104,7 @@ export default async function DashboardLayout({
           roleName: identity.roleName ?? identity.role ?? "Viewer",
           permissions: identity.permissions,
           scopes: identity.scopes,
+          localNoAuth: identity.localNoAuth === true,
         }}
       >
         {children}

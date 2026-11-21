@@ -1,0 +1,58 @@
+# Loopback-only preview for a machine that already has Docker.
+# This file does not build the app. Load the image built elsewhere, then start
+# this stack. PostgreSQL is not published. The app port is bound to 127.0.0.1.
+#
+# Do not change the port binding to 0.0.0.0, do not add a tunnel, and do not put
+# a reverse proxy in front of LOCAL_NO_AUTH. Any client that can open the HTTP
+# port can read and write the local preview organization.
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: inventory
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the env file}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventory -d inventory"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - inventory_local_preview_postgres:/var/lib/postgresql/data
+
+  app:
+    image: ${INVENTORY_IMAGE:-inventory-local-no-auth:1.4.0-r2}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://inventory:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the env file}@db:5432/inventory
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET to at least 32 random characters}
+      AUTH_URL: http://127.0.0.1:${APP_PORT:-3000}
+      AUTH_TRUST_HOST: "true"
+      AUTH_PASSWORD_ENABLED: "true"
+      DEMO_ACCESS_ENABLED: "false"
+      LOCAL_NO_AUTH: "true"
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: /app/data/uploads
+      NOTIFICATION_WORKER_ENABLED: "false"
+      WEBHOOK_WORKER_ENABLED: "false"
+    volumes:
+      - inventory_local_preview_uploads:/app/data/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  inventory_local_preview_postgres:
+  inventory_local_preview_uploads:

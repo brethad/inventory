@@ -99,6 +99,11 @@ migrations, and prints the sign-in details. By default, the app runs at
 > Users**. Then remove `BOOTSTRAP_ADMIN_PASSWORD` and
 > `BOOTSTRAP_ADMIN_PASSWORD_ONCE` from `.env` and restart the stack.
 
+A separate opt-in, `LOCAL_NO_AUTH=true`, serves one writable organization on
+loopback without a login screen. It is off by default. Read
+[docs/local-no-auth.md](docs/local-no-auth.md) before enabling it. Do not publish
+that port beyond `127.0.0.1`.
+
 For production setup and deployment options, follow the
 [installation guide](https://docs.openinventory.polyxo.de/installation) or the
 [website's deployment guide](https://openinventory.polyxo.de/docs), including

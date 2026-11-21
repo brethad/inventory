@@ -173,10 +173,14 @@ test("one organization cannot reset another membership's global credentials", as
 });
 
 test("new organizations use immutable defaults instead of tenant configuration", async () => {
-  const organizations = await read("../lib/organizations.ts");
+  const [organizations, defaults] = await Promise.all([
+    read("../lib/organizations.ts"),
+    read("../lib/organization-defaults.ts"),
+  ]);
 
-  assert.match(organizations, /const canonicalInventoryTypes/);
-  assert.match(organizations, /const canonicalRelationTypes/);
+  assert.match(defaults, /export const canonicalInventoryTypes/);
+  assert.match(defaults, /export const canonicalRelationTypes/);
+  assert.match(organizations, /organization-defaults/);
   assert.match(organizations, /instructions: ""/);
   assert.doesNotMatch(
     organizations,

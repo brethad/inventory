@@ -5,6 +5,10 @@ import {
   prepareBootstrapCredential,
   validateBootstrapCredential,
 } from "./bootstrap-credential.mjs";
+import {
+  isLocalNoAuthEnabled,
+  validateLocalNoAuthEnvironment,
+} from "../lib/local-no-auth.ts";
 
 const value = (name) => process.env[name]?.trim() ?? "";
 const errors = [];
@@ -59,6 +63,7 @@ const demoAccessEnabled = value("DEMO_ACCESS_ENABLED").toLowerCase();
 if (demoAccessEnabled && !["true", "false"].includes(demoAccessEnabled)) {
   errors.push("DEMO_ACCESS_ENABLED must be either true or false when set.");
 }
+errors.push(...validateLocalNoAuthEnvironment(process.env));
 
 const passwordAuthEnabled = value("AUTH_PASSWORD_ENABLED").toLowerCase();
 if (passwordAuthEnabled && !["true", "false"].includes(passwordAuthEnabled)) {
@@ -166,10 +171,11 @@ if (
   demoAccessEnabled !== "true" &&
   !hasAnyAuth0Setting &&
   !oidcConfigured &&
-  !supabaseConfigured
+  !supabaseConfigured &&
+  !isLocalNoAuthEnabled(process.env)
 ) {
   errors.push(
-    "At least one authentication provider must be enabled. Enable password login, Auth0, OIDC, or demo access.",
+    "At least one authentication provider must be enabled. Enable password login, Auth0, OIDC, demo access, or loopback LOCAL_NO_AUTH.",
   );
 }
 
@@ -209,6 +215,12 @@ await import("./migrate.mjs");
 if (demoAccessEnabled === "true") {
   console.log("Reconciling the read-only product demo...");
   await import("./seed-demo.mjs");
+}
+if (isLocalNoAuthEnabled(process.env)) {
+  console.warn(
+    "LOCAL_NO_AUTH is enabled. Every direct loopback client can read and write the local preview organization. Bind the published port to 127.0.0.1 only. Do not put this mode on a public hostname, tunnel, or reverse proxy.",
+  );
+  await import("./seed-local-preview.mjs");
 }
 console.log("Database migrations are current. Starting Inventory...");
 await import("../server.js");

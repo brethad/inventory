@@ -5,6 +5,13 @@ import { cookies, headers } from "next/headers";
 import { createHash } from "node:crypto";
 
 import { auth, demoAccessEnabled } from "@/auth";
+import {
+  isLocalNoAuthEnabled,
+  LOCAL_PREVIEW_ORGANIZATION_ID,
+  LOCAL_PREVIEW_USER_EMAIL,
+  LOCAL_PREVIEW_USER_ID,
+  localNoAuthRequestAllowed,
+} from "@/lib/local-no-auth";
 import { apiTokens, users, type ResourceRecord, type UserRole } from "@/db/schema";
 import type { ApiScope } from "@/lib/auth-roles";
 import {
@@ -73,6 +80,9 @@ export type RequestIdentity = {
   isSuperAdmin: boolean;
   userId?: string;
   tokenId?: string;
+  // Set only for the opt-in loopback preview. It is a server-resolved principal,
+  // not a browser session cookie or API token.
+  localNoAuth?: boolean;
 };
 
 export const hashApiToken = (token: string) =>
@@ -341,11 +351,89 @@ export async function getRequestIdentity(
   return getSessionIdentity(requestedOrganizationId);
 }
 
+async function localNoAuthRequestIsDirectLoopback() {
+  try {
+    const headerList = await headers();
+    return localNoAuthRequestAllowed({
+      host: headerList.get("host"),
+      forwardedHost: headerList.get("x-forwarded-host"),
+      forwardedFor: headerList.get("x-forwarded-for"),
+      origin: headerList.get("origin"),
+      fetchSite: headerList.get("sec-fetch-site"),
+    });
+  } catch {
+    return false;
+  }
+}
+
+async function getLocalNoAuthIdentity(): Promise<RequestIdentity | null> {
+  if (!isLocalNoAuthEnabled() || !(await localNoAuthRequestIsDirectLoopback())) {
+    return null;
+  }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.id, LOCAL_PREVIEW_USER_ID),
+        eq(users.email, LOCAL_PREVIEW_USER_EMAIL),
+        eq(users.isActive, true),
+      ),
+    )
+    .limit(1);
+  if (!user) return null;
+
+  const memberships = await listOrganizationsForUser(user.id);
+  const [membership] = memberships;
+  if (
+    memberships.length !== 1 ||
+    membership?.id !== LOCAL_PREVIEW_ORGANIZATION_ID ||
+    membership.isReadOnly ||
+    membership.role !== "admin"
+  ) {
+    return null;
+  }
+  const effectiveRole = await getEffectiveRole(
+    "admin",
+    LOCAL_PREVIEW_ORGANIZATION_ID,
+  );
+  if (!effectiveRole || effectiveRole.key !== "admin" || !effectiveRole.isSystem) {
+    return null;
+  }
+
+  const identity = await identityForUser({
+    kind: "session",
+    user,
+    requestedOrganizationId: LOCAL_PREVIEW_ORGANIZATION_ID,
+  });
+  if (
+    !identity ||
+    identity.userId !== LOCAL_PREVIEW_USER_ID ||
+    identity.organizationId !== LOCAL_PREVIEW_ORGANIZATION_ID ||
+    identity.organization.isReadOnly ||
+    identity.organizations.length !== 1 ||
+    !identity.permissions.includes("inventory.create") ||
+    !identity.scopes.includes("write")
+  ) {
+    return null;
+  }
+
+  return {
+    ...identity,
+    developerMode: false,
+    isSuperAdmin: false,
+    localNoAuth: true,
+  };
+}
+
 export async function getSessionIdentity(
   requestedOrganizationId?: string | null,
 ): Promise<RequestIdentity | null> {
   const session = await auth();
-  if (!session?.user) return null;
+  // A real session is never replaced by the preview principal. Anonymous
+  // loopback requests opt in only when LOCAL_NO_AUTH is enabled.
+  if (!session?.user) return getLocalNoAuthIdentity();
   const isDemoSession = session.user.authProvider === "demo";
   if (isDemoSession && !demoAccessEnabled) return null;
 
