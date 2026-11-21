@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 
 import { apiTokens } from "@/db/schema";
 import { hashApiToken, requireSessionPermission } from "@/lib/api-auth";
+import { localNoAuthDeniesCredentialIssuance } from "@/lib/local-no-auth";
 import { db } from "@/lib/db";
 import { tokenInputSchema } from "@/lib/validators";
 import { permissionsForScopes } from "@/lib/access-control-contract";
@@ -37,6 +38,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const authorization = await requireSessionPermission(request, "tokens.manage");
   if (authorization.response) return authorization.response;
+  if (localNoAuthDeniesCredentialIssuance(authorization.identity)) {
+    return Response.json(
+      { error: "Local no-auth mode does not issue API tokens." },
+      { status: 403 },
+    );
+  }
   let payload: unknown;
   try {
     payload = await request.json();

@@ -1,3 +1,5 @@
+import { isLocalNoAuthEnabled, validateLocalNoAuthEnvironment } from "@/lib/local-no-auth";
+
 export type AuthEnvironment = Record<string, string | undefined>;
 
 export type ExternalAuthProviderOption = {
@@ -260,15 +262,18 @@ export function validateAuthProviderEnvironment(
   }
   const demoEnabled =
     value(environment, "DEMO_ACCESS_ENABLED").toLowerCase() === "true";
+  const localNoAuthEnabled = isLocalNoAuthEnabled(environment);
+  errors.push(...validateLocalNoAuthEnvironment(environment));
   if (
     !configuration.passwordEnabled &&
     !configuration.auth0 &&
     !configuration.oidc &&
     !configuration.supabase &&
-    !demoEnabled
+    !demoEnabled &&
+    !localNoAuthEnabled
   ) {
     errors.push(
-      "At least one authentication provider must be enabled. Enable password login, Auth0, OIDC, or demo access.",
+      "At least one authentication provider must be enabled. Enable password login, Auth0, OIDC, demo access, or loopback LOCAL_NO_AUTH.",
     );
   }
 

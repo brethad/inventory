@@ -4,6 +4,7 @@ import { apiTokens, type UserRecord } from "@/db/schema";
 import { getEffectiveRole } from "@/lib/access-control";
 import { db, type DatabaseExecutor } from "@/lib/db";
 import { nativeHash, nativeSecret } from "@/lib/native-auth-contract";
+import { LOCAL_PREVIEW_USER_ID } from "@/lib/local-no-auth";
 import { PUBLIC_DEMO_USER_ID } from "@/lib/organization-read-only";
 import { listOrganizationsForUser, selectOrganization } from "@/lib/organizations";
 
@@ -22,7 +23,11 @@ export async function issueNativeSession(
   organizationId?: string,
   executor: DatabaseExecutor = db,
 ) {
-  if (!user.isActive || user.id === PUBLIC_DEMO_USER_ID) {
+  if (
+    !user.isActive ||
+    user.id === PUBLIC_DEMO_USER_ID ||
+    user.id === LOCAL_PREVIEW_USER_ID
+  ) {
     throw new NativeAuthError("This account cannot connect a native app.", 403);
   }
   const organizations = await listOrganizationsForUser(user.id);

@@ -57,6 +57,7 @@ type ShellUser = {
   roleName: string;
   permissions: AppPermission[];
   scopes: ApiScope[];
+  localNoAuth?: boolean;
 };
 
 type NavigationChild = {
@@ -693,6 +694,7 @@ function SidebarContent({
               {user.roleName}
             </p>
           </div>
+          {user.localNoAuth ? null : (
           <button
             type="button"
             onClick={() => void handleSignOut()}
@@ -702,6 +704,7 @@ function SidebarContent({
           >
             <LogOut className="size-4" aria-hidden="true" />
           </button>
+          )}
         </div>
       </div>
     </div>
@@ -924,6 +927,16 @@ export function AppShell({
       ) : null}
 
       <div className="lg:pl-[244px]">
+        {user.localNoAuth && !organization.isReadOnly ? (
+          <div className="sticky top-0 z-30 flex min-h-11 items-center border-b border-warning-border bg-warning-soft px-4 py-2 text-warning sm:px-6 lg:px-8">
+            <p className="min-w-0 text-xs sm:text-sm">
+              <strong className="font-semibold">Local no-auth preview.</strong>{" "}
+              <span className="ml-2 hidden text-muted-strong sm:inline">
+                No password is required. Anyone who can open this server can change the local preview organization. Keep the port on 127.0.0.1.
+              </span>
+            </p>
+          </div>
+        ) : null}
         {organization.isReadOnly ? (
           <div className="sticky top-0 z-30 flex min-h-11 items-center justify-between gap-4 border-b border-brand-border bg-brand-soft px-4 py-2 text-brand sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2.5">
@@ -946,7 +959,7 @@ export function AppShell({
         <header
           className={cn(
             "app-shell-header sticky z-20 flex h-[var(--app-shell-header-height)] items-center border-b border-border bg-surface/90 backdrop-blur-xl",
-            organization.isReadOnly ? "top-11" : "top-0",
+            organization.isReadOnly || user.localNoAuth ? "top-11" : "top-0",
           )}
         >
           <nav

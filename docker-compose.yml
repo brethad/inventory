@@ -65,6 +65,8 @@ services:
       SUPERADMIN_EMAILS: ${SUPERADMIN_EMAILS:-}
       USERS_CAN_CREATE_ORGANIZATIONS: ${USERS_CAN_CREATE_ORGANIZATIONS:-false}
       DEMO_ACCESS_ENABLED: ${DEMO_ACCESS_ENABLED:-false}
+      # Opt-in loopback preview. Leave false for normal password or SSO login.
+      LOCAL_NO_AUTH: ${LOCAL_NO_AUTH:-false}
       DEMO_ORGANIZATION_SLUG: ${DEMO_ORGANIZATION_SLUG:-demo}
       DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@inventory.invalid}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-}

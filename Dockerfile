@@ -51,6 +51,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate.mjs ./scripts/mig
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/bootstrap-credential.mjs ./scripts/bootstrap-credential.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/demo-seed-manifest.mjs ./scripts/demo-seed-manifest.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/seed-demo.mjs ./scripts/seed-demo.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/seed-local-preview.mjs ./scripts/seed-local-preview.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/lib/local-no-auth.ts ./lib/local-no-auth.ts
+COPY --from=builder --chown=nextjs:nodejs /app/lib/organization-defaults.ts ./lib/organization-defaults.ts
+COPY --from=builder --chown=nextjs:nodejs /app/lib/access-control-contract.ts ./lib/access-control-contract.ts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start-production.mjs ./scripts/start-production.mjs
 RUN mkdir -p /app/data/uploads && chown -R nextjs:nodejs /app/data
 

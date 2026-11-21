@@ -46,6 +46,9 @@ jobs:
       - name: Test deployment credential handling
         run: npm run test:deployment
 
+      - name: Test loopback local no-auth guards
+        run: npm run test:local-no-auth
+
       - name: Validate platform definitions
         run: |
           docker compose -p dokploy-check -f deploy/dokploy/docker-compose.yml config --quiet

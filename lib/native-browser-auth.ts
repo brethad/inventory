@@ -13,6 +13,7 @@ import {
   nativeStartSchema, NATIVE_AUTH_TTL_MS, NATIVE_CODE_TTL_MS,
 } from "@/lib/native-auth-contract";
 import { issueNativeSession, NativeAuthError } from "@/lib/native-session";
+import { localNoAuthDeniesCredentialIssuance } from "@/lib/local-no-auth";
 import { PUBLIC_DEMO_USER_ID } from "@/lib/organization-read-only";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getT } from "@/lib/ui-i18n/server";
@@ -134,6 +135,9 @@ export async function authorizeNativeBrowserLogin(request: Request) {
   }
 
   const identity = await getSessionIdentity();
+  if (localNoAuthDeniesCredentialIssuance(identity)) {
+    throw new NativeAuthError("Local no-auth mode does not connect native apps or issue tokens.", 403);
+  }
   if (!identity) {
     if ((await auth())?.user) throw new NativeAuthError("Inventory access has not been enabled for this account. Contact your administrator.", 403);
     const callback = `${basePath}/authorize?request=${encodeURIComponent(id)}`;
@@ -187,6 +191,9 @@ export async function completeNativeBrowserLogin(request: Request) {
   const organizationId = String(form.get("organizationId") ?? "");
   if (!/^[0-9a-f-]{36}$/i.test(organizationId)) throw new NativeAuthError("Invalid organization.");
   const identity = await getSessionIdentity(organizationId);
+  if (localNoAuthDeniesCredentialIssuance(identity)) {
+    throw new NativeAuthError("Local no-auth mode does not connect native apps or issue tokens.", 403);
+  }
   if (!identity?.userId || identity.userId !== form.get("userId") || identity.userId === PUBLIC_DEMO_USER_ID ||
       identity.organization.isReadOnly || identity.organizationId !== organizationId) {
     throw new NativeAuthError("This account cannot connect a native app.", 403);
