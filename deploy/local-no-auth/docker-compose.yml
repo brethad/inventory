@@ -24,7 +24,7 @@ services:
       - inventory_local_preview_postgres:/var/lib/postgresql/data
 
   app:
-    image: ${INVENTORY_IMAGE:-inventory-local-no-auth:1.4.0}
+    image: ${INVENTORY_IMAGE:-inventory-local-no-auth:1.4.0-r2}
     restart: unless-stopped
     init: true
     depends_on:

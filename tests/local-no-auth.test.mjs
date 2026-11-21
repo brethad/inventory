@@ -8,6 +8,7 @@ import {
   LOCAL_PREVIEW_USER_EMAIL,
   LOCAL_PREVIEW_USER_ID,
   isLocalNoAuthEnabled,
+  isLocalOrPrivatePeer,
   isLoopbackHostname,
   localNoAuthDeniesCredentialIssuance,
   localNoAuthRequestAllowed,
@@ -84,6 +85,30 @@ test("anonymous preview requests must be direct loopback requests", () => {
     }),
     false,
   );
+  assert.equal(
+    localNoAuthRequestAllowed({
+      host: "127.0.0.1:3001",
+      forwardedHost: "127.0.0.1:3001",
+      forwardedFor: "172.18.0.1",
+    }),
+    true,
+  );
+  assert.equal(
+    localNoAuthRequestAllowed({
+      host: "127.0.0.1:3001",
+      forwardedFor: "::ffff:172.18.0.1",
+    }),
+    true,
+  );
+  assert.equal(
+    localNoAuthRequestAllowed({
+      host: "127.0.0.1:3001",
+      forwardedFor: "203.0.113.10, 172.18.0.1",
+    }),
+    false,
+  );
+  assert.equal(isLocalOrPrivatePeer("172.18.0.1"), true);
+  assert.equal(isLocalOrPrivatePeer("2001:db8::1"), false);
   assert.equal(
     localNoAuthRequestAllowed({
       host: "127.0.0.1:3000",

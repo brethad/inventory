@@ -38,8 +38,13 @@ returns the app to normal login.
 Anonymous access is applied only when all of these are true:
 
 - `LOCAL_NO_AUTH=true`
-- the request `Host` is loopback
-- `X-Forwarded-Host` and `X-Forwarded-For`, when present, are loopback
+- the request `Host` is loopback (`127.0.0.1:3001` is still loopback when the
+  published port is not the container's port 3000)
+- `X-Forwarded-Host`, when present, is loopback
+- `X-Forwarded-For`, when present, is loopback or a private address. Next.js
+  fills this with the TCP peer. Docker's publish proxy uses a private bridge
+  address such as `172.18.0.1` even though the browser opened `127.0.0.1`. A
+  public address is refused
 - `Origin`, when present, is loopback
 - `Sec-Fetch-Site` is not `cross-site`
 - the request has no usable bearer token

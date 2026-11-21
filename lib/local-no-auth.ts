@@ -35,6 +35,45 @@ export function isLoopbackHostname(hostname: string) {
   return LOOPBACK_HOSTS.has(normalized);
 }
 
+function ipv4Parts(host: string) {
+  const match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) return null;
+  const parts = match.slice(1).map((part) => Number(part));
+  if (parts.some((part) => part > 255)) return null;
+  return parts;
+}
+
+// Next.js records the TCP peer in X-Forwarded-For. Docker's published-port
+// proxy uses a private bridge address even when the browser opened 127.0.0.1.
+export function isLocalOrPrivatePeer(value: string) {
+  let host = value.trim().toLowerCase();
+  if (host.startsWith("[") && host.includes("]")) {
+    host = host.slice(1, host.indexOf("]"));
+  }
+  const mapped = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mapped) host = mapped[1];
+  const v4WithPort = host.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+  if (v4WithPort) host = v4WithPort[1];
+  if (isLoopbackHostname(host)) return true;
+
+  const v4 = ipv4Parts(host);
+  if (v4) {
+    const [a, b] = v4;
+    if (a === 10 || a === 127) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    return false;
+  }
+  if (!host.includes(":")) return false;
+  const head = Number.parseInt(host.split(":", 1)[0] || "0", 16);
+  if (!Number.isFinite(head)) return false;
+  // Unique local fc00::/7 and link-local fe80::/10.
+  if ((head & 0xfe00) === 0xfc00) return true;
+  if ((head & 0xffc0) === 0xfe80) return true;
+  return false;
+}
+
 export function hostnameFromHostHeader(value: string | null | undefined) {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) return "";
@@ -69,10 +108,10 @@ export function localNoAuthRequestAllowed(input: {
   }
 
   const forwardedFor = input.forwardedFor?.split(",")[0]?.trim() ?? "";
-  if (
-    forwardedFor &&
-    !isLoopbackHostname(hostnameFromHostHeader(forwardedFor))
-  ) {
+  // A public peer means the request did not come from this machine. Docker's
+  // bridge address is private and is allowed. The Host itself must still be
+  // loopback, so a forwarded public name is refused above.
+  if (forwardedFor && !isLocalOrPrivatePeer(forwardedFor)) {
     return false;
   }
 
